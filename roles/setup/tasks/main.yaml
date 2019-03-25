@@ -6,8 +6,8 @@
 
 - name: 关闭swap
   shell: |
-    :; "swapoff -a && sysctl -w vm.swappiness=0";
-    "sed -ri '/^[^#]*swap/s@^@#@' /etc/fstab";
+    :; swapoff -a && sysctl -w vm.swappiness=0;
+    sed -ri '/^[^#]*swap/s@^@#@' /etc/fstab;
 
 - name:  分发k8s sysctl文件
   template:
