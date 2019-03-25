@@ -1,0 +1,6 @@
+---
+- name: 设置时区
+  timezone:
+    name: "{{ TimeZone }}"
+  when: TimeZone is defined
+

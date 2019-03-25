@@ -1,0 +1,18 @@
+---
+- hosts: AllNode
+  gather_facts: no
+  tasks:
+    - stat:
+        path: /usr/bin/docker
+      register: docker_cmd
+      tags:
+        - docker
+
+    - include_role:
+        name: docker
+        apply:
+          tags:
+            - docker
+      when: not docker_cmd.stat.exists
+      tags:
+        - docker

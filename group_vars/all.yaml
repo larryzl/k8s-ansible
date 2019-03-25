@@ -1,2 +1,4 @@
 # 定义VIP
-vip=192.168.8.200
+vip: 192.168.8.200
+
+TimeZone: 'Asia/Shanghai'
