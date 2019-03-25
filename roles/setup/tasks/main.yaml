@@ -4,3 +4,19 @@
     name: "{{ TimeZone }}"
   when: TimeZone is defined
 
+- name: 关闭swap
+  shell: |
+    :; "swapoff -a && sysctl -w vm.swappiness=0";
+    "sed -ri '/^[^#]*swap/s@^@#@' /etc/fstab";
+
+- name:  分发k8s sysctl文件
+  template:
+    src: k8s.conf.j2
+    dest: /etc/sysctl.d/
+
+- name: enable --now systemd-modules-load
+  systemd:
+    name: systemd-modules-load
+    state: started
+    enabled: yes
+
