@@ -9,6 +9,6 @@
 192.168.8.206
 
 
-[AllNode]
+[AllNode:children]
 master
 node
