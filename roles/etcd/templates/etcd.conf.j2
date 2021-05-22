@@ -1,0 +1,15 @@
+NAME={{nodename}}
+CERT-FILE=/opt/certs/etcd/etcd.pem
+KEY-FILE=/opt/certs/etcd/etcd-key.pem
+PEER-CERT-FILE=/opt/certs/etcd/etcd.pem
+PEER-KEY-FILE=/opt/certs/etcd/etcd-key.pem
+TRUSTED-CA-FILE=/opt/certs/ca/ca.pem
+PEER-TRUSTED-CA=/opt/certs/ca/ca.pem
+INITIAL-ADVERTISE-PEER-URLS=https://{{inventory_hostname}}:2380
+LISTEN-PEER-URLS=https://{{inventory_hostname}}:2380
+LISTEN-CLIENT-URLS=http://127.0.0.1:2379,https://{{inventory_hostname}}:2379
+ADVERTISE-CLIENT-URLS=http://127.0.0.1:2379,https://{{inventory_hostname}}:2379
+INITIAL-CLUSTER-TOKEN={{etcd.initialClusterToken}}
+INITIAL-CLUSTER="{%for host in groups['etcd']%}{{hostvars[host].nodename}}=https://{{host}}:2380{% if not loop.last %},{% endif %}{%endfor%}"
+INITIAL-CLUSTER-STATE=new
+DATA-DIR={{etcd.dataDir}}

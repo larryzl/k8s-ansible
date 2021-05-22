@@ -1,0 +1,11 @@
+#!/bin/bash
+vip="{{VIP}}"
+function exit_code {
+	echo $*  1>&2
+	exit 1
+}
+curl -s -m 2 -k https://localhost:7443/healthz -o /dev//null || exit_code "curl localhost:7443 failed"
+if ip a |grep -q $vip ;then
+    curl -s -m 2 -k https://${vip}:7443/healthz -o /dev//null || exit_code "curl ${vip}:7443 failed"
+fi
+echo "curl ok"

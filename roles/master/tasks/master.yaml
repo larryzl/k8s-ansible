@@ -1,0 +1,124 @@
+- name: "创建kubernetes工作目录"
+  file: 
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - "/opt/kubernetes-{{k8s.version}}/bin"
+    - "/opt/kubernetes-{{k8s.version}}/conf"
+    - "{{k8s.pki.dir}}"
+    - "{{apiserver.audit.log_path}}"
+    - "{{apiserver.logs.dir}}"
+    - "{{controllerManager.logs.dir}}"
+    - "{{scheduler.logs.dir}}"
+  ignore_errors: true
+
+- name: "分发文件"
+  copy:
+    src: "/opt/soft/kubernetes-{{k8s.version}}/kubernetes-{{k8s.version}}/server/bin/{{item}}"
+    dest: "/opt/kubernetes-{{k8s.version}}/bin/{{item}}"
+    mode: u+x
+    owner: root
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kubectl
+    - kube-scheduler
+  tags:
+    - binary
+
+- name: "创建软连接"
+  file:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+    state: link
+  with_items:
+    - {src: "/opt/kubernetes-{{k8s.version}}" , dest: "/opt/kubernetes"}
+    - {src: "/opt/kubernetes/bin/kube-apiserver", dest: "/usr/local/bin/kube-apiserver"}
+    - {src: "/opt/kubernetes/bin/kube-controller-manager", dest: "/usr/local/bin/kube-controller-manager"}
+    - {src: "/opt/kubernetes/bin/kube-scheduler", dest: "/usr/local/bin/kube-scheduler"}
+    - {src: "/opt/kubernetes/bin/kubectl", dest: "/usr/local/bin/kubectl"}
+
+
+- name: "分发证书文件"
+  copy:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+  with_items:
+    - {src: "/opt/certs/ca-key.pem", dest: "{{ca.dir}}/ca-key.pem"}
+    - {src: "/opt/certs/apiserver.pem", dest: "{{k8s.pki.dir}}/apiserver.pem"}
+    - {src: "/opt/certs/apiserver-key.pem", dest: "{{k8s.pki.dir}}/apiserver-key.pem"}
+    - {src: "/opt/certs/metrics-server.pem", dest: "{{k8s.pki.dir}}/metrics-server.pem"}
+    - {src: "/opt/certs/metrics-server-key.pem", dest: "{{k8s.pki.dir}}/metrics-server-key.pem"}
+    - {src: "/opt/certs/scheduler.pem", dest: "{{k8s.pki.dir}}/scheduler.pem"}
+    - {src: "/opt/certs/scheduler-key.pem", dest: "{{k8s.pki.dir}}/scheduler-key.pem"}
+    - {src: "/opt/certs/controller-manager.pem", dest: "{{k8s.pki.dir}}/controller-manager.pem"}
+    - {src: "/opt/certs/controller-manager-key.pem", dest: "{{k8s.pki.dir}}/controller-manager-key.pem"}
+
+
+- name: "分发audit审计文件"
+  copy:
+    src: "{{item}}"
+    dest: "/opt/kubernetes-{{k8s.version}}/conf/{{item}}"
+  with_items:
+    - audit.yaml
+
+- name: "分发token.csv文件"
+  template:
+    src: token.csv.j2
+    dest: /opt/kubernetes-{{k8s.version}}/conf/token.csv
+
+- name: "分发systemd文件"
+  template:
+    src: "{{item}}"
+    dest: "/usr/lib/systemd/system/{{item|regex_replace('.j2','')}}"
+  with_items:
+    - kube-apiserver.service.j2
+    - kube-controller-manager.service.j2
+    - kube-scheduler.service.j2
+
+- name: "创建kube-scheduler授权文件"
+  shell: "kubectl config set-cluster kubernetes \
+    --certificate-authority={{ca.dir}}/ca.pem \
+    --embed-certs=true \
+    --server=https://{{VIP}}:7443 \
+    --kubeconfig=/opt/kubernetes/conf/scheduler.conf \
+    && kubectl config set-credentials system:kube-scheduler \
+    --client-certificate={{k8s.pki.dir}}/scheduler.pem \
+    --embed-certs=true \
+    --client-key={{k8s.pki.dir}}/scheduler-key.pem \
+    --kubeconfig=/opt/kubernetes/conf/scheduler.conf \
+    && kubectl config set-context system:kube-scheduler@kubernetes \
+    --cluster=kubernetes \
+    --user=system:kube-scheduler \
+    --kubeconfig=/opt/kubernetes/conf/scheduler.conf \
+    && kubectl config use-context system:kube-scheduler@kubernetes --kubeconfig=/opt/kubernetes/conf/scheduler.conf"
+
+- name: "创建kube-controller-manager授权文件"
+  shell: "kubectl config set-cluster kubernetes \
+    --certificate-authority={{ca.dir}}/ca.pem \
+    --embed-certs=true \
+    --server=https://{{VIP}}:7443 \
+    --kubeconfig=/opt/kubernetes/conf/controller-manager.conf \
+    && kubectl config set-credentials system:kube-controller-manager \
+    --client-certificate={{k8s.pki.dir}}/controller-manager.pem \
+    --embed-certs=true \
+    --client-key={{k8s.pki.dir}}/controller-manager-key.pem \
+    --kubeconfig=/opt/kubernetes/conf/controller-manager.conf \
+    && kubectl config set-context system:kube-controller-manager@kubernetes \
+    --cluster=kubernetes \
+    --user=system:kube-controller-manager \
+    --kubeconfig=/opt/kubernetes/conf/controller-manager.conf \
+    && kubectl config use-context system:kube-controller-manager@kubernetes --kubeconfig=/opt/kubernetes/conf/controller-manager.conf"
+
+- name: "启动服务"
+  systemd:
+    name: "{{item}}"
+    state: restarted 
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - kube-apiserver
+    - kube-controller-manager
+    - kube-scheduler
+
+

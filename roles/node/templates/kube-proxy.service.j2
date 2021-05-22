@@ -1,0 +1,9 @@
+[Unit]
+Description=Kubernetes Proxy
+After=network.target
+[Service]
+ExecStart=/usr/local/bin/kube-proxy --logtostderr=false --v={{ kubeProxy.logs.level | default(2) }} --log-dir={{kubeProxy.logs.dir}} --proxy-mode={{kubeProxy.mode}} {% if kubeProxy.mode == 'ipvs' %}--ipvs-scheduler={{kubeProxy.scheduler}} {%endif%}--config=/opt/kubernetes/conf/kube-proxy-config.yml
+Restart=on-failure
+LimitNOFILE=65536
+[Install]
+WantedBy=multi-user.target

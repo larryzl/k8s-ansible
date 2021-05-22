@@ -1,0 +1,19 @@
+[Unit]
+Description=Kubernetes Kubelet
+After=docker.service
+[Service]
+ExecStart=/usr/local/bin/kubelet --logtostderr=false \
+		--v={{ kubelet.logs.level | default(2)}} \
+		--log-dir={{kubelet.logs.dir}} \
+		--hostname-override={{inventory_hostname}} \
+   		--runtime-cgroups=/systemd/system.slice \
+    	--kubelet-cgroups=/systemd/system.slice \
+		--kubeconfig=/opt/kubernetes/conf/kubelet.kubeconfig \
+		--bootstrap-kubeconfig=/opt/kubernetes/conf/bootstrap.kubeconfig \
+		--config=/opt/kubernetes/conf/kubelet-config.yml \
+		--pod-infra-container-image=registry.cn-hangzhou.aliyuncs.com/ops-infra/pause-amd64:3.3 \
+		--cert-dir={{k8s.pki.dir}}
+Restart=on-failure
+LimitNOFILE=65536
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,81 @@
+- name: "设置随机字符串"
+  set_fact:
+    randomStr:  "{{ lookup('password', '/dev/null length=15 chars=ascii_letters') }}"
+
+- name: "判断etcd 二进制文件是否存在"
+  shell: "[[ -f /opt/soft/etcd-{{etcd.version}}/etcd &&  -f /opt/soft/etcd-{{etcd.version}}/etcdctl ]] && echo 1 || echo 0"
+  register: etcd_exist
+- name: "打印结果"
+  debug:
+    msg: "{{etcd_exist.stdout}}"
+
+- block:
+  - name: "Create soft dir"
+    file:
+      path: /opt/soft/etcd-{{etcd.version}}
+      state: directory
+  
+  - name: "Pull etcd docker image"
+    shell: "docker pull registry.cn-hangzhou.aliyuncs.com/google_containers/etcd-amd64:{{etcd.version}}"
+
+  - name: "Run docker container"
+    shell: "docker run -d --rm --name etcd-{{randomStr}} registry.cn-hangzhou.aliyuncs.com/google_containers/etcd-amd64:{{etcd.version}} sleep 10"
+
+  - name: "Copy etcd binary files"
+    shell: |
+      docker cp etcd-{{randomStr}}:/usr/local/bin/etcd /opt/soft/etcd-{{etcd.version}}/
+      docker cp etcd-{{randomStr}}:/usr/local/bin/etcdctl /opt/soft/etcd-{{etcd.version}}/
+
+  when: etcd_exist.stdout|int == 0
+
+- name: "判断k8s 文件是否存在"
+  shell: "[[ -f /opt/soft/kubernetes-{{k8s.version}}/kubernetes-{{k8s.version}}.tgz ]] && echo 1 || echo 0"
+  register: k8s_exist
+
+- name: "打印结果"
+  debug:
+    msg: "{{k8s_exist.stdout}}"
+
+- block:
+  - name: "Create soft dir"
+    file:
+      path: /opt/soft/kubernetes-{{k8s.version}}
+      state: directory
+
+  - name: "Pull kubernetes image"
+    shell: "docker pull registry.cn-hangzhou.aliyuncs.com/ops-infra/kubernetes-binary:{{k8s.version}}"
+
+  - name: "Run docker container"
+    shell: |
+      docker run --rm -d --name k8s-binary-{{randomStr}} registry.cn-hangzhou.aliyuncs.com/ops-infra/kubernetes-binary:{{k8s.version}} sleep 15
+
+  - name: "Copy binary files"
+    shell: |
+      docker cp k8s-binary-{{randomStr}}:/opt/kubernetes-{{k8s.version}}.tgz /opt/soft/kubernetes-{{k8s.version}}/ 
+      docker cp k8s-binary-{{randomStr}}:/opt/cfssl /opt/soft/kubernetes-{{k8s.version}}/
+      docker cp k8s-binary-{{randomStr}}:/opt/cfssljson /opt/soft/kubernetes-{{k8s.version}}/ 
+      tar zxf /opt/soft/kubernetes-{{k8s.version}}/kubernetes-{{k8s.version}}.tgz -C /opt/soft/kubernetes-{{k8s.version}}/ 
+
+  when: k8s_exist.stdout|int == 0
+
+
+- name: "判断cfssl 工具是否存在"
+  shell: "[[ -f /usr/local/bin/cfssl && -f /usr/local/bin/cfssljson ]] && echo 1 ||echo 0"
+  register: cfssl_exist
+- name: "打印结果"
+  debug:
+    msg: "{{cfssl_exist.stdout}}"
+
+- name: "下载cfssl 工具"
+  shell: "cp /opt/soft/kubernetes-{{k8s.version}}/cfssl* /usr/local/bin/ && chmod +x /usr/local/bin/cfssl*"
+  when: cfssl_exist.stdout|int == 0
+
+
+- name: "下载flannel"
+  shell: |
+    docker pull registry.cn-hangzhou.aliyuncs.com/ops-infra/kubernetes-binary:flannel_v0.11.0
+    docker run --rm -d --name flannel-{{randomStr}} registry.cn-hangzhou.aliyuncs.com/ops-infra/kubernetes-binary:flannel_v0.11.0 sleep 10
+    [[ -f /opt/soft/flannel-v0.11.0-linux-amd64.tar.gz ]] || docker cp flannel-{{randomStr}}:/opt/flannel-v0.11.0-linux-amd64.tar.gz /opt/soft/flannel-v0.11.0-linux-amd64.tar.gz 
+    mkdir -p /opt/soft/flannel-v0.11.0
+    tar zxf /opt/soft/flannel-v0.11.0-linux-amd64.tar.gz  -C /opt/soft/flannel-v0.11.0    
+

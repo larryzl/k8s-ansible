@@ -1,0 +1,33 @@
+! Configuration File for keepalived
+
+global_defs {
+   router_id LVS_DEVEL
+   enable_script_security
+}
+vrrp_script chk_nginx {
+    user root
+    script "/bin/bash /etc/keepalived/check_port.sh 7443"
+    interval 3
+    weight -10
+    fall 10
+    rise 2
+}
+
+vrrp_instance VI_1 {
+    state BACKUP
+    interface {{INTERFACE_NAME}}
+    virtual_router_id 157
+    priority 100
+    advert_int 1
+    nopreempt
+    authentication {
+        auth_type PASS
+        auth_pass 1111
+    }
+   track_script {
+         chk_nginx
+    }
+    virtual_ipaddress {
+        {{VIP}}
+    }
+}

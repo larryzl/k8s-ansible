@@ -1,0 +1,40 @@
+- include: master.yaml
+
+- name: "部署 nginx & keepalived"
+  yum:
+    name: 
+      - nginx
+      - keepalived
+    state: latest
+  
+- name: "分发配置文件"
+  template:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+  with_items:
+    - {src: "nginx.conf.j2", dest: "/etc/nginx/nginx.conf"}
+    - {src: "keepalived.conf.j2", dest: "/etc/keepalived/keepalived.conf"}
+    - {src: "check_port.sh.j2", dest: "/etc/keepalived/check_port.sh"}
+
+- name: "修改检测脚本权限"
+  file:
+    name: /etc/keepalived/check_port.sh
+    mode: u+x
+
+- name: "启动服务"
+  systemd: 
+    name: "{{item}}"
+    state: restarted 
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - nginx
+    - keepalived
+  
+  
+- name: "将kubelet-bootstrap用户绑定到系统集群角色"
+  shell: |
+    kubectl create clusterrolebinding kubelet-bootstrap \
+    --clusterrole=system:node-bootstrapper \
+    --user=kubelet-bootstrap
+  when: inventory_hostname == groups['master'][0]

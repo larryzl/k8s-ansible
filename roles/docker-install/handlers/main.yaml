@@ -1,0 +1,5 @@
+- name: yum-clean-metadata
+  shell: yum clean metadata
+
+- name: yum-makecache
+  shell: yum makecache

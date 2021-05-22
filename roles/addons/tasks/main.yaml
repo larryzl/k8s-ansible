@@ -1,0 +1,35 @@
+- name: "创建yaml目录"
+  file:
+    path: /data/yaml
+    state: directory
+  ignore_errors: true
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+
+- include: flanneld.yaml
+  tags:
+    flanneld
+
+- include: coredns.yaml
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+  tags:
+    coredns
+
+- include: ingress.yaml
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+  tags:
+    ingress  
+
+- include: dashboard.yaml
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+  tags:
+    dashboard
+
+- include: metrics-server.yaml
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+  tags:
+    metrics

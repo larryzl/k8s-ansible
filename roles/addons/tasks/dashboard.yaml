@@ -1,0 +1,19 @@
+- name: "分发dashboard yaml文件"
+  template:
+    src: "{{item}}"
+    dest: "/data/yaml/{{item|regex_replace('.j2','')}}"
+  with_items:
+    - dashboard.yaml.j2
+    - ingress-dashboard.yaml.j2
+  
+
+- name: "部署 dashboard "
+  shell: |
+    [ !-d /opt/pki/dashboard ] && mkdir -p /opt/pki/dashboard && cd /opt/pki/dashboard \
+    && openssl req -x509 -nodes -days 3650 -newkey rsa:2048 -keyout dashboard.key -out dashboard.crt -subj  "/CN={{dashboard.domain}}/O={{dashboard.domain}}"
+    sleep 10
+    kubectl create namespace kubernetes-dashboard
+    kubectl create secret generic kubernetes-dashboard-certs --from-file=/opt/pki/dashboard/dashboard.crt --from-file=/opt/pki/dashboard/dashboard.key -n kubernetes-dashboard
+    kubectl apply -f /data/yaml/dashboard.yaml
+    kubectl apply -f /data/yaml/ingress-dashboard.yaml
+  

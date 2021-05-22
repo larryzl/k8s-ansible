@@ -1,0 +1,180 @@
+# This is the configuration file for the etcd server.
+  
+# Human-readable name for this member.
+# 作用：此配置值作为此节点在--initial-cluster标志中列出的条目（例如，default=http://localhost:2380）引用。若使用静态引导，则需要匹配标志中使用的密钥。使用发现时，每个成员必须具有唯一的名称。建议使用Hostname或者machine-id。
+name: '{{nodename}}'
+# Path to the data directory. 服务运行数据保存的路径
+data-dir: "{{etcd.dataDir}}"
+
+  
+# Path to the dedicated wal directory. 专用wal目录的路径
+# 作用：独立设置wal目录，etcd会将WAL文件写入--wal-dir而不是--data-dir。独立的wal路径，有助于避免日志记录和其他IO操作之间的竞争。
+wal-dir: "{{etcd.dataDir}}/wal"
+  
+# Number of committed transactions to trigger a snapshot to disk. 
+# 含义：触发快照到磁盘的已提交事务数。指定有多少事务（transaction）被提交时，触发截取快照保存到磁盘。
+snapshot-count: 10000
+  
+# Time (in milliseconds) of a heartbeat interval.
+# 心跳间隔的时间（以毫秒为单位）作用：leader 多久发送一次心跳到 followers。
+heartbeat-interval: 100
+  
+# Time (in milliseconds) for an election to timeout.
+# 选举超时的时间（以毫秒为单位）重新投票的超时时间，如果 follow 在该时间间隔没有收到心跳包，会触发重新投票，默认为 1000 ms
+election-timeout: 1000
+  
+# Raise alarms when backend size exceeds the given quota. 0 means use the
+# default quota.
+# 当后端大小超过给定配额时（0默认为低空间配额），引发警报。
+quota-backend-bytes: 0
+  
+# List of comma separated URLs to listen on for peer traffic.
+# 和成员之间通信的地址。用于监听其他etcd member的url
+listen-peer-urls: "https://{{inventory_hostname}}:2380"
+  
+# List of comma separated URLs to listen on for client traffic.
+# 对外提供服务的地址。
+listen-client-urls: "https://{{inventory_hostname}}:2379,http://127.0.0.1:2379"
+  
+# Maximum number of snapshot files to retain (0 is unlimited).
+# 要保留的最大快照文件数（0表示不受限制）。
+max-snapshots: 5
+  
+# Maximum number of wal files to retain (0 is unlimited).
+# 要保留的最大wal文件数（0表示不受限制）
+max-wals: 5
+  
+# Comma-separated white list of origins for CORS (cross-origin resource sharing).
+# 逗号分隔的CORS原始白名单（跨源资源共享）
+cors:
+  
+# List of this member's peer URLs to advertise to the rest of the cluster.
+# The URLs needed to be a comma-separated list.
+# 该节点成员对等URL地址，且会通告群集的其余成员节点。
+initial-advertise-peer-urls: "https://{{inventory_hostname}}:2380"
+  
+# List of this member's client URLs to advertise to the public.
+# The URLs needed to be a comma-separated list.
+# 此成员的客户端URL列表，用于通告群集的其余部分。这些URL可以包含域名。对外公告的该节点客户端监听地址。
+advertise-client-urls: "https://{{inventory_hostname}}:2379"
+  
+# Discovery URL used to bootstrap the cluster.
+# 用于引导群集的发现URL
+discovery:
+  
+# Valid values include 'exit', 'proxy'
+#含义：发现服务失败时的预期行为（“退出”或“代理”）。“proxy”仅支持v2 API。
+discovery-fallback: 'proxy'
+  
+# HTTP proxy to use for traffic to discovery service.
+# 含义：用于流量到发现服务的HTTP代理。
+discovery-proxy:
+  
+# DNS domain used to bootstrap initial cluster.
+# DNS srv域用于引导群集。
+discovery-srv:
+  
+# Initial cluster configuration for bootstrapping.
+# 集群中所有节点的信息
+initial-cluster: "{%for host in groups['etcd']%}{{hostvars[host].nodename}}=https://{{host}}:2380{% if not loop.last %},{% endif %}{%endfor%}"
+  
+# Initial cluster token for the etcd cluster during bootstrap.
+# 创建集群的 token，这个值每个集群保持唯一
+initial-cluster-token: '{{etcd.initialClusterToken}}'
+  
+# Initial cluster state ('new' or 'existing').
+# 初始集群状态
+initial-cluster-state: 'new'
+  
+# Reject reconfiguration requests that would cause quorum loss.
+# 含义：拒绝可能导致仲裁丢失的重新配置请求。
+strict-reconfig-check: false
+  
+# Accept etcd V2 client requests
+# 接受etcd V2客户端请求
+enable-v2: true
+  
+# Enable runtime profiling data via HTTP server
+# 通过HTTP服务器启用运行时分析数据。地址位于客户端URL +“/ debug / pprof /”
+enable-pprof: true
+  
+# Valid values include 'on', 'readonly', 'off'
+proxy: 'off'
+  
+# Time (in milliseconds) an endpoint will be held in a failed state.
+# 在重新考虑代理请求之前，endpoints 将处于失败状态的时间（以毫秒为单位）。
+proxy-failure-wait: 5000
+# Time (in milliseconds) of the endpoints refresh interval.
+# endpoints 刷新间隔的时间（以毫秒为单位）。
+proxy-refresh-interval: 30000
+# Time (in milliseconds) for a dial to timeout.
+# 拨号超时的时间（以毫秒为单位）或0表示禁用超时
+proxy-dial-timeout: 1000
+  
+# Time (in milliseconds) for a write to timeout.
+# 写入超时的时间（以毫秒为单位）或0以禁用超时。
+proxy-write-timeout: 5000
+  
+# Time (in milliseconds) for a read to timeout.
+# 读取超时的时间（以毫秒为单位）或0以禁用超时。
+proxy-read-timeout: 0
+  
+client-transport-security:
+  # Path to the client server TLS cert file.
+  # 客户端服务器TLS证书文件的路径。
+  cert-file: "{{etcd.pki.dir}}/etcd.pem"
+  
+  # Path to the client server TLS key file.
+  # 客户端服务器TLS密钥文件的路径。
+  key-file: "{{etcd.pki.dir}}/etcd-key.pem"
+  
+  # Enable client cert authentication.
+  # 启用客户端证书验证
+  client-cert-auth: true
+  
+  # Path to the client server TLS trusted CA cert file.
+  # 客户端服务器的路径TLS可信CA证书文件。
+  trusted-ca-file: "{{ca.dir}}/ca.pem"
+  
+  # Client TLS using generated certificates
+  # 客户端TLS使用生成的证书
+  auto-tls: false
+  
+peer-transport-security:
+  # Path to the peer server TLS cert file.
+  # 对等服务器TLS证书文件的路径。这是对等流量的证书，用于服务器和客户端。
+  cert-file: "{{etcd.pki.dir}}/etcd.pem"
+  
+  # Path to the peer server TLS key file.
+  # 对等服务器TLS密钥文件的路径。这是对等流量的关键，用于服务器和客户端
+  key-file: "{{etcd.pki.dir}}/etcd-key.pem"
+  
+  # Enable peer client cert authentication.
+  # 启用对等客户端证书验证。
+  client-cert-auth: true
+  
+  # Path to the peer server TLS trusted CA cert file.
+  # 对等服务器TLS可信CA文件的路径。
+  trusted-ca-file: "{{ca.dir}}/ca.pem"
+  
+  # Peer TLS using generated certificates.
+  # Peer TLS使用自动生成的证书
+  auto-tls: false
+  
+# Enable debug-level logging for etcd.
+# 为结构化日志记录指定'zap'或'capnslog'。
+logger: zap
+  
+# Specify 'stdout' or 'stderr' to skip journald logging even when running under systemd.
+# 指定'stdout'或'stderr'以跳过日志记录，即使在systemd或逗号分隔的输出目标列表下运行也是如此
+log-outputs: [stderr]
+  
+# Force to create a new one member cluster.
+# 含义：强制创建新的单成员群集。它提交配置更改，强制删除集群中的所有现有成员并添加自身。需要将其设置为还原备份。
+force-new-cluster: false
+
+# 含义：说明--auto-compaction-retention配置的基于时间保留的三种模式：periodic, revision. periodic
+auto-compaction-mode: periodic
+# 含义：在一个小时内为mvcc键值存储的自动压实保留。0表示禁用自动压缩。
+
+auto-compaction-retention: "1"

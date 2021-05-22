@@ -1,0 +1,19 @@
+[Unit]
+Description=Kubernetes Scheduler
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=network.target
+After=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/local/bin/kube-scheduler --master=https://{{VIP}}:7443 \
+  --kubeconfig=/opt/kubernetes/conf/scheduler.conf \
+  --leader-elect=true \
+  --logtostderr=false \
+  --log-dir={{scheduler.logs.dir}} \
+  --v={{ apiserver.logs.level | default(2)}}
+  
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

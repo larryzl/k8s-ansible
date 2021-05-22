@@ -1,0 +1,29 @@
+[Unit]
+Description=Kubernetes Controller Manager
+Documentation=https://github.com/GoogleCloudPlatform/kubernetes
+After=network.target
+After=kube-apiserver.service
+
+[Service]
+ExecStart=/usr/local/bin/kube-controller-manager --master=https://{{VIP}}:7443 \
+  --kubeconfig=/opt/kubernetes/conf/controller-manager.conf \
+  --allocate-node-cidrs=true \
+  --service-cluster-ip-range={{clusterIPRange}} \
+  --cluster-cidr={{podCidr}} \
+  --cluster-name=kubernetes \
+  --cluster-signing-cert-file={{ca.dir}}/ca.pem \
+  --cluster-signing-key-file={{ca.dir}}/ca-key.pem \
+  --service-account-private-key-file={{ca.dir}}/ca-key.pem \
+  --root-ca-file={{ca.dir}}/ca.pem \
+  --use-service-account-credentials=true \
+  --controllers=*,bootstrapsigner,tokencleaner \
+  --leader-elect=true \
+  --logtostderr=false \
+  --log-dir={{controllerManager.logs.dir}} \
+  --v={{ apiserver.logs.level | default(2)}}
+
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

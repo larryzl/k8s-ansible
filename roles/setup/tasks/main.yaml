@@ -1,0 +1,97 @@
+- name: "关闭SELinux"
+  lineinfile:
+    path: /etc/selinux/config
+    regexp: '^SELINUX=.*'
+    line: "SELINUX=disabled"
+
+- name: "关闭firewalld dnsmasq"
+  systemd:
+    name: "{{item}}"
+    enabled: no
+    state: stopped
+  with_items:
+    - firewalld
+    - dnsmasq
+  ignore_errors: yes
+
+- name: "设置时区"
+  timezone: name="Asia/Shanghai"
+
+
+- name: "安装epel"
+  yum:
+    name: epel-release
+    state: latest
+    update_cache: yes
+
+- name: "安装相关软件"
+  yum:
+    name:
+      - iptables-services
+      - net-tools
+      - ipvsadm
+      - ipset
+      - jq
+      - curl
+      - sysstat
+      - libseccomp
+      - git
+      - conntrack
+      - conntrack-tools
+      - chrony
+    state: latest
+    update_cache: yes
+
+- name: "关闭SWAP"
+  lineinfile:
+    path: /etc/fstab
+    regexp: '(^.* swap .*)$'
+    line: '#\1'
+    backrefs: yes
+  when:
+    not kubelet.swap
+
+
+- name: "分发sysctl / journald / ipvs 配置文件"
+  copy:
+    src: files/{{item.src}}
+    dest: "{{item.dest}}"
+    mode: g=rw,o=rw
+  with_items:
+    - { src: 'kubernetes.conf' ,dest: '/etc/security/limits.d/' }
+    - { src: '99-prophet.conf' ,dest: '/etc/systemd/journald.conf.d/'}
+    - { src: 'ipvs.modules' , dest: '/etc/sysconfig/modules/'}
+
+- name: "分发模板文件文件"
+  template:
+    src: "{{ item.src }}"
+    dest: "{{ item.dest }}"
+    mode: g=r,o=r
+  with_items:
+    - { src: 'kubernetes.conf.j2' , dest: '/etc/sysctl.d/kubernetes.conf'}
+    - { src: 'chrony.conf.j2', dest: '/etc/chrony.conf'}
+
+- name: "设置Hostname"
+  hostname: name={{ hostname }}
+  when: hostname is defined and hostname
+
+
+- name: "删除ntp服务"
+  package: name=ntp state=absent
+  ignore_errors: True
+
+- name: "创建crontab任务"
+  cron:
+    name: "chrony crontab restart"
+    minute: "0"
+    hour: "3"
+    job: "systemctl restart chronyd"
+
+
+- name: "重启节点"
+  shell: sleep 2 && shutdown -r now "reboot"
+  async: 1
+  poll: 0
+  ignore_errors: yes
+  tags:
+    - reboot

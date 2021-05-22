@@ -1,0 +1,13 @@
+- include_tasks: etcd.yaml
+
+
+- name: "检查etcd服务"
+  shell: "/opt/etcd/etcdctl --cert-file {{etcd.pki.dir}}/etcd.pem \
+  --key-file {{etcd.pki.dir}}/etcd-key.pem \
+  --ca-file {{ca.dir}}/ca.pem \
+  cluster-health"
+  register: result
+
+- name: "返回输出"
+  debug:
+    msg: "{{result.stdout_lines}}"

@@ -1,0 +1,115 @@
+VIP: "192.168.31.229"
+VIP_NET: 24
+INTERFACE_NAME: "eth0"
+
+ntp_servers:
+  - 'cn.pool.ntp.org'
+  - 's1b.time.edu.cn'
+
+localDNS: 192.168.31.22
+podCidr: 172.31.0.0/16
+clusterIPRange: 10.254.0.0/16
+clusterDNS: 10.254.0.2
+serviceNodePortRange: 20000-32767
+
+
+docker:
+  version: 20.10.6
+  graph: "/data/docker"
+  registry_mirrors:
+    - "https://q2gr04ke.mirror.aliyuncs.com"
+    - "http://harbor.host.com"
+  exec_opts:
+    - "native.cgroupdriver=systemd"
+  insecure_registries:
+    - "registry.access.redhat.com"
+    - "quay.io"
+    - "harbor.host.com"
+  storage_driver: overlay2
+  log_driver: json-file
+  live_restore: "true"
+
+cert:
+  # 过期时间
+  expiry: "876000h" 
+  names:
+    # 省
+    st: "BeiJing"
+    # 位置
+    l: "ChaoYang"
+    # 组织
+    o: "k8s"
+    # 部门
+    ou: "ops"
+
+# 跟证书信息
+ca:
+  # 证书存放位置
+  dir: /opt/pki/ca
+
+etcd:
+  version: 3.3.17
+  # 数据存放目录
+  dataDir: /data/etcd
+  # 初始化集群token
+  initialClusterToken: etcd-cluster
+  # 证书信息
+  pki:
+    # 证书存放位置
+    dir: /opt/pki/etcd
+  # 备份信息
+  backup: 
+      # 备份目录
+      dataDir: /opt/etcd_bak
+      scriptDir: /etc/etcd
+      count: "4"
+
+k8s:
+  version: v1.15.12
+  work_dir: /opt/
+  pki:
+    dir: /opt/pki/kubernetes
+  bootstrap:
+    token: 0e1a90dc444baf0aec9925e4fb6b3c03
+
+apiserver:
+  logs:
+    level: 2
+    dir: "/data/logs/apiserver"
+  audit:
+    log_path: "/data/logs/apiserver"
+
+controllerManager:
+  logs:
+    level: 2
+    dir: /data/logs/controller-manager
+
+scheduler:
+  logs:
+    level: 2
+    dir: /data/logs/scheduler
+
+kubeProxy:
+  mode: ipvs # ipvs or iptables
+  scheduler: nq # 调度算法 nq wrr rr 
+  logs:
+    level: 2
+    dir: /data/logs/kube-proxy
+
+kubelet:
+  swap: false # 关闭swap
+  logs:
+    level: 2
+    dir: /data/logs/kubelet
+
+
+flannel:
+  version: v0.11.0
+  pki:
+    dir: /opt/pki/flannel
+  iface: eth0
+  type: host-gw
+  healthzPort: 2401
+
+dashboard:
+  domain: dashboard.demo.com

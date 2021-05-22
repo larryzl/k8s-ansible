@@ -1,0 +1,10 @@
+- name: "分发coredns yaml文件"
+  template:
+    src: "coredns.yaml.j2"
+    dest: "/data/yaml/coredns.yaml"
+  
+
+- name: "部署coredns"
+  shell: |
+    kubectl apply -f /data/yaml/coredns.yaml
+  

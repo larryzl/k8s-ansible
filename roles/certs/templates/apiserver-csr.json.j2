@@ -1,0 +1,27 @@
+{
+    "CN":"kubernetes",
+    "hosts":[
+        "127.0.0.1",
+        {%for host in groups['master'] %}"{{host}}",{%endfor%}
+        "{{ (clusterIPRange | regex_replace(':|\.', ':')).split(':')[0:3]|join(".")}}.1",
+        "{{VIP}}",
+        "kubernetes",
+        "kubernetes.default",
+        "kubernetes.default.svc",
+        "kubernetes.default.svc.cluster",
+        "kubernetes.default.svc.cluster.local"
+    ],
+    "key":{
+        "algo":"rsa",
+        "size":2048
+    },
+    "names":[
+        {
+            "C":"CN",
+            "ST":"{{cert.names.st }}",
+            "L":"{{cert.names.l}}",
+            "O":"{{cert.names.o}}",
+            "OU":"{{cert.names.ou}}"
+        }
+    ]
+}

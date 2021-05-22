@@ -1,0 +1,11 @@
+{
+    "graph": {{docker.graph|to_json}},
+    "storage-driver": {{docker.storage_driver|to_json}},
+    "insecure-registries":{{docker.insecure_registries|to_json}},
+    "registry-mirrors": {{docker.registry_mirrors | to_json}},
+    "bip": "{{podCidr[0:-6]}}{{inventory_hostname.split('.')[3]}}.1/24",
+    "exec-opts": {{docker.exec_opts|to_json}},
+    "log-driver": {{docker.log_driver|to_json}},
+    "log-opts": {"max-size": "100m"},
+    "live-restore":{{docker.live_restore|to_json|regex_replace('"','')}}
+}

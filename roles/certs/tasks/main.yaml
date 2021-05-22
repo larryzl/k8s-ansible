@@ -1,0 +1,80 @@
+- name: "设置工作目录"
+  set_fact:
+    workdir: "/opt/certs"
+
+- name: "创建证书目录"
+  shell: |
+    [[ -d /opt/certs ]] && mv /opt/certs /opt/certs-$(date +"%Y%m%d_%H%S")
+    mkdir -p /opt/certs
+
+- name: "创建证书文件"
+  template:
+    src: "{{item}}"
+    dest: "/opt/certs/{{item|regex_replace('.j2','')}}"
+  with_items:
+    - ca-config.json.j2
+    - ca-csr.json.j2
+    - etcd-csr.json.j2
+    - admin-csr.json.j2
+    - flannel-csr.json.j2
+    - apiserver-csr.json.j2
+    - controller-manager-csr.json.j2
+    - scheduler-csr.json.j2
+    - proxy-csr.json.j2
+    - metrics-server-csr.json.j2
+
+- name: "创建token.csv"
+  shell: "cd {{workdir}} ; "
+
+- name: "生成 ca 证书&私钥"
+  shell: "cd {{workdir}} ; cfssl gencert -initca /opt/certs/ca-csr.json | cfssljson -bare ca"
+
+- name: "生成 etcd 证书&私钥"
+  shell: "cd {{workdir}} ; cfssl gencert -ca={{workdir}}/ca.pem \
+-ca-key={{workdir}}/ca-key.pem \
+-config={{workdir}}/ca-config.json \
+-profile=kubernetes etcd-csr.json | cfssljson -bare etcd"
+
+
+- name: "生成 admin 证书&私钥"
+  shell: "cd {{workdir}}; cfssl gencert -ca={{workdir}}/ca.pem \
+-ca-key={{workdir}}/ca-key.pem \
+-config={{workdir}}/ca-config.json \
+-profile=kubernetes {{workdir}}/admin-csr.json | cfssljson -bare admin"
+
+
+- name: "生成 flannel 证书&私钥"
+  shell: "cd {{workdir}}; cfssl gencert -ca={{workdir}}/ca.pem \
+-ca-key={{workdir}}/ca-key.pem \
+-config={{workdir}}/ca-config.json \
+-profile=kubernetes {{workdir}}/flannel-csr.json | cfssljson -bare flannel"
+
+- name: "生成 apiserver 证书&私钥"
+  shell: "cd {{workdir}}; cfssl gencert -ca={{workdir}}/ca.pem \
+        -ca-key={{workdir}}/ca-key.pem \
+        -config={{workdir}}/ca-config.json \
+        -profile=kubernetes apiserver-csr.json | cfssljson -bare apiserver  "
+
+- name: "生成 controller-manager 证书&私钥"
+  shell: "cd {{workdir}} ;  cfssl gencert -ca={{workdir}}/ca.pem \
+   -ca-key={{workdir}}/ca-key.pem \
+   -config={{workdir}}/ca-config.json \
+   -profile=kubernetes {{workdir}}/controller-manager-csr.json | cfssljson -bare controller-manager"
+
+- name: "生成 scheduler 证书&私钥"
+  shell: "cd {{workdir}} ; cfssl gencert -ca={{workdir}}/ca.pem \
+    -ca-key={{workdir}}/ca-key.pem \
+    -config={{workdir}}/ca-config.json \
+    -profile=kubernetes {{workdir}}/scheduler-csr.json | cfssljson -bare scheduler"
+
+- name: "生成 proxy 证书&私钥 "
+  shell: "cd {{workdir}} ; cfssl gencert -ca={{workdir}}/ca.pem \
+  -ca-key={{workdir}}/ca-key.pem \
+  -config={{workdir}}/ca-config.json \
+  -profile=kubernetes proxy-csr.json | cfssljson -bare proxy "
+
+- name: "生成 metrics-server 证书&私钥"
+  shell: "cd {{workdir}} ; cfssl gencert -ca={{workdir}}/ca.pem \
+  -ca-key={{workdir}}/ca-key.pem \
+  -config={{workdir}}/ca-config.json \
+  -profile=kubernetes metrics-server-csr.json | cfssljson -bare metrics-server"

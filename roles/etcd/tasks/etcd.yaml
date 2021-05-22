@@ -1,0 +1,60 @@
+- name: "创建etcd 相关目录"
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - "{{ etcd.dataDir }}"
+    - "/opt/etcd-{{etcd.version}}"
+    - "{{etcd.pki.dir}}"
+    - "{{ca.dir}}"
+
+- name: "创建软连接"
+  file:
+    path: "{{item}}"
+    src: "/opt/etcd-{{etcd.version}}"
+    state: link
+  with_items:
+    - "/opt/etcd"
+
+- name: "分发二进制文件"
+  copy:
+    src: "{{item}}"
+    dest: "/opt/etcd-{{etcd.version}}/{{item|basename}}"
+    mode: u+x
+  with_items:
+  - /opt/soft/etcd-{{etcd.version}}/etcd
+  - /opt/soft/etcd-{{etcd.version}}/etcdctl
+
+
+- name: "分发etcd证书文件"
+  copy:
+    src: "{{item}}"
+    dest: "{{etcd.pki.dir}}/{{item|basename}}"
+  with_items:
+    - /opt/certs/etcd-key.pem
+    - /opt/certs/etcd.pem
+
+- name: "分发ca证书文件"
+  copy:
+    src: "{{item}}"
+    dest: "{{ca.dir}}/{{item|basename}}"
+  with_items:
+    - /opt/certs/ca.pem
+
+- name: "分发etcd配置文件/ system文件"
+  template:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+    mode: g=r,o=r
+  with_items:
+    - { src: "etcd.conf.yaml.j2", dest: "/opt/etcd/etcd.conf.yaml" }
+    - { src: "etcd.service.j2", dest: "/usr/lib/systemd/system/etcd.service"}
+
+
+- name: "启动服务"
+  systemd: 
+    name: etcd.service
+    state: restarted 
+    enabled: yes
+    daemon_reload: yes
+

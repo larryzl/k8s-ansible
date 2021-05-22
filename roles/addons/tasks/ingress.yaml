@@ -1,0 +1,12 @@
+- name: "分发nginx-ingress yaml文件"
+  copy:
+    src: "nginx-ingress.yaml"
+    dest: "/data/yaml/nginx-ingress.yaml"
+
+
+  
+
+- name: "部署 nginx-ingress "
+  shell: |
+    kubectl apply -f /data/yaml/nginx-ingress.yaml
+  

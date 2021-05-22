@@ -1,0 +1,74 @@
+---
+- hosts: "{{ host | default('all')}}"
+  gather_facts: no
+  roles:
+    - setup
+  tags:
+  - setup
+
+
+- hosts: "{{ host | default('all') }}"
+  gather_facts: no
+  roles:
+    - docker-install
+  tags:
+  - docker
+
+
+- hosts: "localhost"
+  gather_facts: no
+  roles:
+    - get_binary
+  tags:
+    - get_binary
+
+
+- hosts: "localhost"
+  gather_facts: no
+  roles:
+    - certs
+  tags:
+    - certs
+
+- hosts: "{{ host | default('etcd') }}"
+  gather_facts: no
+  roles:
+    - etcd
+  tags:
+    - etcd
+
+- hosts: "{{host|default('master')}}"
+  gather_facts: no
+  roles:
+    - master
+  tags:
+    - master
+
+- hosts: "{{host|default('node')}}"
+  gather_facts: no
+  roles:
+    - node
+  tags:
+    - node
+
+- hosts: "{{host|default('node')}}"
+  gather_facts: no
+  roles:
+    - addons
+  tags:
+    - addons
+
+
+# ---
+# - hosts: all
+#   tasks:
+#     - debug: var=hostvars[inventory_hostname]['ansible_default_ipv4']['address']
+#   args:
+#     - debug
+
+# - hosts: "{{ host | default('etcd') }}"
+#   gather_facts: no
+#   roles:
+#     - etcd-install
+#   args:
+#     - etcd-install

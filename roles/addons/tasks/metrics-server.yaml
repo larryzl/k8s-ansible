@@ -1,0 +1,10 @@
+- name: "分发metrics-server yaml文件"
+  template:
+    src: "metrics-server.yaml.j2"
+    dest: "/data/yaml/metrics-server.yaml"
+  
+
+- name: "部署 metrics-server "
+  shell: |
+    kubectl apply -f /data/yaml/metrics-server.yaml
+  

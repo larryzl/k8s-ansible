@@ -1,0 +1,58 @@
+- name: "flannel: 创建工作目录"
+  file:
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - "/opt/flannel-{{flannel.version}}"
+    - "{{ flannel.pki.dir}}"
+    - "{{etcd.pki.dir}}"
+  ignore_errors: true
+
+- name: "flannel: 分发二进制文件"
+  copy: src="/opt/soft/flannel-{{flannel.version}}/flanneld" dest="/opt/flannel-{{flannel.version}}/flanneld" mode=u+x
+
+- name: "flannel: 创建软连接"
+  file:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+    state: link
+  with_items:
+    - {src: "/opt/flannel-{{flannel.version}}" ,dest: "/opt/flannel" }
+    - {src: "/opt/flannel-{{flannel.version}}/flanneld", dest: "/usr/local/bin/flanneld" }
+
+- name: "flannel: 分发证书"
+  copy:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+  with_items:
+    - {src: "/opt/certs/flannel.pem",dest: "{{flannel.pki.dir}}/flannel.pem" }
+    - {src: "/opt/certs/flannel-key.pem",dest: "{{flannel.pki.dir}}/flannel-key.pem" }
+    - {src: "/opt/certs/etcd.pem",dest: "{{etcd.pki.dir}}/etcd.pem"}
+    - {src: "/opt/certs/etcd-key.pem",dest: "{{etcd.pki.dir}}/etcd-key.pem"}
+
+
+- name: "flannel: 分发systemd文件"
+  template:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+  with_items:
+    - {src: "subnet.env.j2",dest: "/opt/flannel/subnet.env"}
+    - {src: "flanneld.service.j2",dest: "/usr/lib/systemd/system/flanneld.service"}
+
+- name: "flannel: 设置etcd Key"
+  shell: |
+      /opt/etcd/etcdctl --cert-file {{etcd.pki.dir}}/etcd.pem --key-file {{etcd.pki.dir}}/etcd-key.pem --ca-file {{ca.dir}}/ca.pem \
+      set /coreos.com/network/config '{"Network": "{{podCidr}}", "Backend": {"Type": "{{flannel.type}}"}}' 
+  delegate_to: "{{ groups['master'][0] }}"
+  run_once: true  
+
+
+- name: "flannel: 启动服务"
+  systemd:
+    name: "{{item}}"
+    state: restarted 
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - flanneld
+    

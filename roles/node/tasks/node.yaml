@@ -1,0 +1,117 @@
+- name: "设置变量"
+  set_fact:
+    k8s_home: "/opt/kubernetes-{{k8s.version}}"
+    KUBE_APISERVER: "https://{{VIP}}:7443"
+
+- name: "创建kubernetes工作目录"
+  file: 
+    path: "{{item}}"
+    state: directory
+  with_items:
+    - "{{k8s_home}}/bin"
+    - "{{k8s_home}}/conf"
+    - "{{ca.dir}}"
+    - "{{k8s.pki.dir}}"
+    - "{{kubelet.logs.dir}}"
+    - "{{kubeProxy.logs.dir}}"
+
+  ignore_errors: true
+
+- name: "分发文件"
+  copy:
+    src: "/opt/soft/kubernetes-{{k8s.version}}/kubernetes-{{k8s.version}}/server/bin/{{item}}"
+    dest: "{{k8s_home}}/bin/{{item}}"
+    mode: u+x
+    owner: root
+  with_items:
+    - kube-proxy
+    - kubelet
+    - kubectl
+  tags:
+    - binary
+
+- name: "创建软连接"
+  file:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+    state: link
+  with_items:
+    - {src: "{{k8s_home}}" , dest: "/opt/kubernetes"}
+    - {src: "/opt/kubernetes/bin/kubelet", dest: "/usr/local/bin/kubelet"}
+    - {src: "/opt/kubernetes/bin/kubectl", dest: "/usr/local/bin/kubectl"}
+    - {src: "/opt/kubernetes/bin/kube-proxy", dest: "/usr/local/bin/kube-proxy"}
+  ignore_errors: true
+
+- name: "创建 kubelet 相关配置文件"
+  template:
+    src: "{{item}}"
+    dest: "{{k8s_home}}/conf/{{item | regex_replace('.j2','')}}"
+  with_items:
+    - kubelet-config.yml.j2
+    - kube-proxy-config.yml.j2
+
+- name: "分发证书文件"
+  copy:
+    src: "{{item.src}}"
+    dest: "{{item.dest}}"
+  with_items:
+    - {src: "/opt/certs/ca.pem" , dest: "{{ca.dir}}/ca.pem"}
+    - {src: "/opt/certs/proxy-key.pem" ,dest: "{{k8s.pki.dir}}/proxy-key.pem"}
+    - {src: "/opt/certs/proxy.pem" ,dest: "{{k8s.pki.dir}}/proxy.pem"}
+
+
+- name: "生成 kubelet bootstrap kubeconfig"
+  shell: "kubectl config set-cluster kubernetes \
+      --certificate-authority={{ca.dir}}/ca.pem \
+      --embed-certs=true \
+      --server={{KUBE_APISERVER}} \
+      --kubeconfig={{k8s_home}}/conf/bootstrap.kubeconfig \
+    && kubectl config set-credentials 'kubelet-bootstrap' \
+      --token={{k8s.bootstrap.token}} \
+      --kubeconfig={{k8s_home}}/conf/bootstrap.kubeconfig \
+    && kubectl config set-context default \
+      --cluster=kubernetes \
+      --user='kubelet-bootstrap' \
+      --kubeconfig={{k8s_home}}/conf/bootstrap.kubeconfig \
+    && kubectl config use-context default \
+      --kubeconfig={{k8s_home}}/conf/bootstrap.kubeconfig"
+
+
+- name: "生成 kube-proxy.kubeconfig"
+  shell: "kubectl config set-cluster kubernetes \
+      --certificate-authority={{ca.dir}}/ca.pem \
+      --embed-certs=true \
+      --server={{KUBE_APISERVER}} \
+      --kubeconfig={{k8s_home}}/conf/kube-proxy.kubeconfig \
+     && kubectl config set-credentials kube-proxy \
+      --client-certificate={{k8s.pki.dir}}/proxy.pem \
+      --client-key={{k8s.pki.dir}}/proxy-key.pem \
+      --embed-certs=true \
+      --kubeconfig={{k8s_home}}/conf/kube-proxy.kubeconfig \
+     && kubectl config set-context default \
+      --cluster=kubernetes \
+      --user=kube-proxy \
+      --kubeconfig={{k8s_home}}/conf/kube-proxy.kubeconfig \
+    && kubectl config use-context default \
+      --kubeconfig={{k8s_home}}/conf/kube-proxy.kubeconfig"
+
+
+- name: "分发systemd 文件"
+  template:
+    src: "{{item}}"
+    dest: "/usr/lib/systemd/system/{{item|regex_replace('.j2','')}}"
+  with_items:
+    - kubelet.service.j2
+    - kube-proxy.service.j2
+
+
+- name: "启动服务"
+  systemd:
+    name: "{{item}}"
+    state: restarted 
+    enabled: yes
+    daemon_reload: yes
+  with_items:
+    - kubelet
+    - kube-proxy
+    

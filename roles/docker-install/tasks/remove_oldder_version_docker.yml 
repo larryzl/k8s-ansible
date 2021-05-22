@@ -1,0 +1,6 @@
+---
+# possible saved as remove_oldder_version_docker.yml
+- name: remove oldder version docker
+  yum: 
+    name: ['docker', 'docker-client', 'docker-client-latest', 'docker-common', 'docker-latest', 'docker-latest-logrotate', 'docker-selinux', 'docker-engine', 'docker-engine-selinux']
+    state: absent

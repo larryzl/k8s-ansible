@@ -1,0 +1,52 @@
+[Unit]
+Description=Kubernetes API Server
+Documentation=https://github.com/kubernetes/kubernetes
+After=network.target
+
+[Service]
+ExecStart=/usr/local/bin/kube-apiserver --authorization-mode=Node,RBAC \
+  --enable-admission-plugins=NamespaceLifecycle,LimitRanger,ServiceAccount,PersistentVolumeClaimResize,DefaultStorageClass,DefaultTolerationSeconds,NodeRestriction,MutatingAdmissionWebhook,ValidatingAdmissionWebhook,ResourceQuota,Priority,PodPreset \
+  --advertise-address={{ inventory_hostname }} \
+  --bind-address={{ inventory_hostname }}  \
+  --insecure-port=8080 \
+  --secure-port=6443 \
+  --allow-privileged=true \
+  --audit-policy-file=/opt/kubernetes/conf/audit.yaml \
+  --audit-log-maxage=30 \
+  --audit-log-maxbackup=3 \
+  --audit-log-maxsize=100 \
+  --audit-log-path={{apiserver.audit.log_path}} \
+  --storage-backend=etcd3 \
+  --enable-bootstrap-token-auth=true \
+  --token-auth-file=/opt/kubernetes/conf/token.csv \
+  --etcd-cafile={{ca.dir}}/ca.pem \
+  --etcd-certfile={{etcd.pki.dir}}/etcd.pem \
+  --etcd-keyfile={{etcd.pki.dir}}/etcd-key.pem \
+  --etcd-servers={% for host in groups['etcd'] %}https://{{host}}:2379{% if not loop.last %},{% endif %}{% endfor %}
+  --client-ca-file={{ca.dir}}/ca.pem \
+  --kubelet-https \
+  --kubelet-preferred-address-types=InternalIP,ExternalIP,Hostname \
+  --runtime-config=api/all=true,settings.k8s.io/v1alpha1=true \
+  --enable-aggregator-routing=true \
+  --requestheader-allowed-names=aggregator \
+  --service-cluster-ip-range={{ clusterIPRange }} \
+  --service-node-port-range={{ serviceNodePortRange }} \
+  --service-account-key-file={{ca.dir}}/ca-key.pem \
+  --tls-cert-file={{k8s.pki.dir}}/apiserver.pem \
+  --tls-private-key-file={{k8s.pki.dir}}/apiserver-key.pem \
+  --requestheader-client-ca-file={{ca.dir}}/ca.pem \
+  --requestheader-username-headers=X-Remote-User \
+  --requestheader-group-headers=X-Remote-Group \
+  --requestheader-extra-headers-prefix=X-Remote-Extra- \
+  --proxy-client-cert-file={{k8s.pki.dir}}/metrics-server.pem \
+  --proxy-client-key-file={{k8s.pki.dir}}/metrics-server-key.pem \
+  --logtostderr=false \
+  --log-dir={{ apiserver.logs.dir }} \
+  --v={{ apiserver.logs.level | default(2)}}
+  
+Restart=on-failure
+RestartSec=10s
+LimitNOFILE=65535
+
+[Install]
+WantedBy=multi-user.target

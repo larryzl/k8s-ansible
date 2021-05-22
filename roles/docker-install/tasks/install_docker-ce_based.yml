@@ -1,0 +1,6 @@
+---
+# possible saved as install_docker-ce-based.yml
+- name: install yum-utils device-mapper-persistent-data lvm2
+  yum: 
+    name: ['yum-utils', 'device-mapper-persistent-data', 'lvm2']
+    state: latest
